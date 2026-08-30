@@ -108,3 +108,63 @@ pub struct LowStockProduct {
     pub stock: f64,
     pub min_stock: f64,
 }
+
+#[derive(Debug, Deserialize)]
+pub struct SaleItemInput {
+    pub product_id: String,
+    pub qty: f64,
+    pub price: f64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreateSale {
+    pub customer_id: Option<String>,
+    pub items: Vec<SaleItemInput>,
+    pub discount: Option<f64>,
+    pub paid: Option<f64>,
+    pub payment_method: Option<String>,
+    pub note: Option<String>,
+}
+
+#[derive(Debug, Serialize, Clone, sqlx::FromRow)]
+pub struct SaleItem {
+    pub id: String,
+    pub sale_id: String,
+    pub product_id: Option<String>,
+    pub product_name: String,
+    pub qty: f64,
+    pub price: f64,
+    pub total: f64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SaleWithItems {
+    pub sale: Sale,
+    pub items: Vec<SaleItem>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PurchaseItemInput {
+    pub product_id: String,
+    pub qty: f64,
+    pub price: f64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreatePurchase {
+    pub supplier_id: Option<String>,
+    pub items: Vec<PurchaseItemInput>,
+    pub paid: Option<f64>,
+    pub note: Option<String>,
+}
+
+#[derive(Debug, Serialize, Clone, sqlx::FromRow)]
+pub struct Purchase {
+    pub id: String,
+    pub supplier_id: Option<String>,
+    pub subtotal: f64,
+    pub paid: f64,
+    pub due: f64,
+    pub note: Option<String>,
+    pub created_at: String,
+}
