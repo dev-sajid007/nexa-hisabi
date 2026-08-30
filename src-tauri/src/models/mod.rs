@@ -91,6 +91,7 @@ pub struct Sale {
     pub created_at: String,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Serialize, Clone, sqlx::FromRow)]
 pub struct DashboardStats {
     pub today_sales: f64,
@@ -101,6 +102,7 @@ pub struct DashboardStats {
     pub low_stock_count: i64,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Serialize, Clone)]
 pub struct LowStockProduct {
     pub id: String,
@@ -137,6 +139,7 @@ pub struct SaleItem {
     pub total: f64,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Serialize)]
 pub struct SaleWithItems {
     pub sale: Sale,
