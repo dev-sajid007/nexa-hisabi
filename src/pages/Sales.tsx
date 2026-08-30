@@ -4,6 +4,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { formatCurrency } from "../lib/bn";
 import { invoke } from "../lib/tauri";
+import { useToast } from "../components/ui/toast";
 import { Trash2, Plus, Receipt } from "lucide-react";
 
 type Customer = { id: string; name: string };
@@ -12,6 +13,7 @@ type CartItem = { product_id: string; name: string; qty: number; price: number }
 type Sale = { id: string; invoice_no: string; subtotal: number; discount: number; total: number; paid: number; due: number; created_at: string };
 
 export function Sales() {
+  const { toast } = useToast();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
@@ -43,11 +45,12 @@ export function Sales() {
 
   const addToCart = () => {
     const prod = products.find(p => p.id === selectedProd);
-    if (!prod) return alert("পণ্য নির্বাচন করুন");
+    if (!prod) return toast("পণ্য নির্বাচন করুন", "error");
     const q = parseFloat(qty) || 0;
-    if (q <= 0) return alert("পরিমাণ সঠিক দিন");
-    if (q > prod.stock) return alert(`স্টক অপর্যাপ্ত (স্টক: ${prod.stock})`);
+    if (q <= 0) return toast("পরিমাণ সঠিক দিন", "error");
+    if (q > prod.stock) return toast(`স্টক অপর্যাপ্ত (স্টক: ${prod.stock})`, "error");
     setCart([...cart, { product_id: prod.id, name: prod.name, qty: q, price: prod.sell_price }]);
+    toast(`${prod.name} কার্টে যোগ ✓`, "success");
     setQty("1");
   };
 
@@ -58,7 +61,7 @@ export function Sales() {
   const due = Math.max(0, total - paidAmt);
 
   const submit = async () => {
-    if (cart.length === 0) return alert("কার্ট খালি");
+    if (cart.length === 0) return toast("কার্ট খালি", "error");
     try {
       const sale = await invoke<Sale>("create_sale", {
         data: {
@@ -69,9 +72,9 @@ export function Sales() {
           payment_method: method,
         }
       });
-      alert(`বিক্রয় সম্পন্ন! ${sale.invoice_no} — মোট ${formatCurrency(sale.total)}, বাকি ${formatCurrency(sale.due)}`);
+      toast(`বিক্রয় সম্পন্ন! ${sale.invoice_no} — মোট ${formatCurrency(sale.total)}, বাকি ${formatCurrency(sale.due)}`, "success");
       setCart([]); setDiscount(""); setPaid(""); load();
-    } catch (e) { alert(String(e)); }
+    } catch (e) { toast(String(e), "error"); }
   };
 
   return (

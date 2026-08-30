@@ -4,6 +4,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { formatCurrency } from "../lib/bn";
 import { invoke } from "../lib/tauri";
+import { useToast } from "../components/ui/toast";
 import { Plus, Trash2 } from "lucide-react";
 
 type Supplier = {
@@ -15,6 +16,7 @@ type Supplier = {
 };
 
 export function Suppliers() {
+  const { toast } = useToast();
   const [list, setList] = useState<Supplier[]>([]);
   const [form, setForm] = useState({ name: "", phone: "", address: "", opening_due: "" });
   const [showForm, setShowForm] = useState(false);
@@ -33,7 +35,7 @@ export function Suppliers() {
   useEffect(() => { load(); }, []);
 
   const create = async () => {
-    if (!form.name.trim()) return alert("নাম আবশ্যক");
+    if (!form.name.trim()) return toast("নাম আবশ্যক", "error");
     try {
       await invoke("create_supplier", {
         data: {
@@ -43,13 +45,14 @@ export function Suppliers() {
       });
       setForm({ name: "", phone: "", address: "", opening_due: "" });
       setShowForm(false);
+      toast("সরবরাহকারী সংরক্ষিত ✓", "success");
       load();
-    } catch (e) { alert(String(e)); }
+    } catch (e) { toast(String(e), "error"); }
   };
 
   const del = async (id: string) => {
     if (!confirm("মুছে ফেলবেন?")) return;
-    try { await invoke("delete_supplier", { id }); load(); } catch (e) { alert(String(e)); }
+    try { await invoke("delete_supplier", { id }); toast("মুছে ফেলা হয়েছে", "success"); load(); } catch (e) { toast(String(e), "error"); }
   };
 
   return (

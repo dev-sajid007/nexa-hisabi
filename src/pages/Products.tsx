@@ -4,6 +4,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { formatCurrency, formatNumber } from "../lib/bn";
 import { invoke } from "../lib/tauri";
+import { useToast } from "../components/ui/toast";
 import { Trash2 } from "lucide-react";
 
 type Category = { id: string; name: string };
@@ -13,6 +14,7 @@ type Product = {
 };
 
 export function Products() {
+  const { toast } = useToast();
   const [cats, setCats] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [form, setForm] = useState({ name: "", sku: "", category_id: "", buy_price: "", sell_price: "", stock: "", min_stock: "5", unit: "পিস" });
@@ -36,7 +38,7 @@ export function Products() {
   useEffect(() => { load(); }, []);
 
   const create = async () => {
-    if (!form.name.trim()) return alert("পণ্যের নাম আবশ্যক");
+    if (!form.name.trim()) return toast("পণ্যের নাম আবশ্যক", "error");
     try {
       await invoke("create_product", {
         data: {
@@ -50,13 +52,14 @@ export function Products() {
       });
       setForm({ name: "", sku: "", category_id: "", buy_price: "", sell_price: "", stock: "", min_stock: "5", unit: "পিস" });
       setShowForm(false);
+      toast("পণ্য সংরক্ষিত ✓", "success");
       load();
-    } catch (e) { alert(String(e)); }
+    } catch (e) { toast(String(e), "error"); }
   };
 
   const del = async (id: string) => {
     if (!confirm("মুছে ফেলবেন?")) return;
-    try { await invoke("delete_product", { id }); load(); } catch (e) { alert(String(e)); }
+    try { await invoke("delete_product", { id }); toast("মুছে ফেলা হয়েছে", "success"); load(); } catch (e) { toast(String(e), "error"); }
   };
 
   return (

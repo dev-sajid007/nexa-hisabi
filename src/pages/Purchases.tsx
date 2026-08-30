@@ -4,6 +4,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { formatCurrency } from "../lib/bn";
 import { invoke } from "../lib/tauri";
+import { useToast } from "../components/ui/toast";
 import { Trash2, Plus } from "lucide-react";
 
 type Supplier = { id: string; name: string };
@@ -12,6 +13,7 @@ type CartItem = { product_id: string; name: string; qty: number; price: number }
 type Purchase = { id: string; subtotal: number; paid: number; due: number; created_at: string };
 
 export function Purchases() {
+  const { toast } = useToast();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
@@ -47,11 +49,12 @@ export function Purchases() {
 
   const addToCart = () => {
     const prod = products.find(p => p.id === selectedProd);
-    if (!prod) return alert("পণ্য নির্বাচন করুন");
+    if (!prod) return toast("পণ্য নির্বাচন করুন", "error");
     const q = parseFloat(qty) || 0;
     const pr = parseFloat(price) || 0;
-    if (q <= 0 || pr < 0) return alert("পরিমাণ/মূল্য সঠিক দিন");
+    if (q <= 0 || pr < 0) return toast("পরিমাণ/মূল্য সঠিক দিন", "error");
     setCart([...cart, { product_id: prod.id, name: prod.name, qty: q, price: pr }]);
+    toast(`${prod.name} কার্টে যোগ ✓`, "success");
     setQty("1");
   };
 
@@ -60,7 +63,7 @@ export function Purchases() {
   const due = Math.max(0, subtotal - paidAmt);
 
   const submit = async () => {
-    if (cart.length === 0) return alert("কার্ট খালি");
+    if (cart.length === 0) return toast("কার্ট খালি", "error");
     try {
       await invoke("create_purchase", {
         data: {
@@ -69,9 +72,9 @@ export function Purchases() {
           paid: paidAmt,
         }
       });
-      alert(`ক্রয় সম্পন্ন! মোট ${formatCurrency(subtotal)}, বাকি ${formatCurrency(due)} — স্টক বৃদ্ধি ✓`);
+      toast(`ক্রয় সম্পন্ন! মোট ${formatCurrency(subtotal)}, বাকি ${formatCurrency(due)} — স্টক বৃদ্ধি ✓`, "success");
       setCart([]); setPaid(""); load();
-    } catch (e) { alert(String(e)); }
+    } catch (e) { toast(String(e), "error"); }
   };
 
   return (
