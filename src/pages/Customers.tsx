@@ -5,6 +5,7 @@ import { Input } from "../components/ui/input";
 import { formatCurrency } from "../lib/bn";
 import { invoke } from "../lib/tauri";
 import { useToast } from "../components/ui/toast";
+import { validateName, validatePhone } from "../lib/validation";
 import { Plus, Trash2, Search } from "lucide-react";
 
 type Customer = {
@@ -43,8 +44,11 @@ export function Customers() {
   useEffect(() => { load(); }, []);
 
   const create = async () => {
-    if (!form.name.trim()) return toast("নাম আবশ্যক", "error");
-    if (form.phone && !/^01[0-9]{9}$/.test(form.phone.replace(/[^0-9]/g,""))) toast("মোবাইল ফরম্যাট: 01XXXXXXXXX", "info");
+    const nameErr = validateName(form.name);
+    if (nameErr) return toast(nameErr, "error");
+    const phoneErr = validatePhone(form.phone);
+    if (phoneErr) return toast(phoneErr, "error");
+    if (form.opening_due && isNaN(parseFloat(form.opening_due))) return toast("বাকির পরিমাণ সঠিক নয়", "error");
     try {
       await invoke("create_customer", {
         data: {
@@ -60,7 +64,16 @@ export function Customers() {
       toast("ক্রেতা সংরক্ষিত ✓", "success");
       load();
     } catch (e) {
-      toast(String(e), "error");
+      const msg = String(e);
+      if (msg.includes("Tauri-not-available")) {
+        // Browser dev mock — local add
+        setCustomers(prev => [{ id: Date.now().toString(), name: form.name, phone: form.phone || null, address: form.address || null, note: form.note || null, opening_due: parseFloat(form.opening_due) || 0, created_at: new Date().toISOString() }, ...prev]);
+        setForm({ name: "", phone: "", address: "", note: "", opening_due: "" });
+        setShowForm(false);
+        toast("ক্রেতা সংরক্ষিত ✓ (browser mock)", "success");
+        return;
+      }
+      toast(msg, "error");
     }
   };
 

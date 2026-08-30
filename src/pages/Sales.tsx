@@ -5,6 +5,7 @@ import { Input } from "../components/ui/input";
 import { formatCurrency } from "../lib/bn";
 import { invoke } from "../lib/tauri";
 import { useToast } from "../components/ui/toast";
+import { validateCart, validateQty } from "../lib/validation";
 import { Trash2, Plus, Receipt } from "lucide-react";
 
 type Customer = { id: string; name: string };
@@ -47,7 +48,8 @@ export function Sales() {
     const prod = products.find(p => p.id === selectedProd);
     if (!prod) return toast("পণ্য নির্বাচন করুন", "error");
     const q = parseFloat(qty) || 0;
-    if (q <= 0) return toast("পরিমাণ সঠিক দিন", "error");
+    const qtyErr = validateQty(q);
+    if (qtyErr) return toast(qtyErr, "error");
     if (q > prod.stock) return toast(`স্টক অপর্যাপ্ত (স্টক: ${prod.stock})`, "error");
     setCart([...cart, { product_id: prod.id, name: prod.name, qty: q, price: prod.sell_price }]);
     toast(`${prod.name} কার্টে যোগ ✓`, "success");
@@ -61,7 +63,11 @@ export function Sales() {
   const due = Math.max(0, total - paidAmt);
 
   const submit = async () => {
-    if (cart.length === 0) return toast("কার্ট খালি", "error");
+    const cartErr = validateCart(cart);
+    if (cartErr) return toast(cartErr, "error");
+    if (disc < 0) return toast("Discount ০ এর কম হতে পারে না", "error");
+    if (paidAmt < 0) return toast("পরিশোধ ০ এর কম হতে পারে না", "error");
+    if (paidAmt > total) return toast("পরিশোধ মোটের চেয়ে বেশি হতে পারে না", "error");
     try {
       const sale = await invoke<Sale>("create_sale", {
         data: {
@@ -74,7 +80,16 @@ export function Sales() {
       });
       toast(`বিক্রয় সম্পন্ন! ${sale.invoice_no} — মোট ${formatCurrency(sale.total)}, বাকি ${formatCurrency(sale.due)}`, "success");
       setCart([]); setDiscount(""); setPaid(""); load();
-    } catch (e) { toast(String(e), "error"); }
+    } catch (e) {
+      const msg = String(e);
+      if (msg.includes("Tauri-not-available")) {
+        const mockInv = `INV-${new Date().toISOString().slice(0,10).replace(/-/g,"")}-${Math.floor(Math.random()*1000)}`;
+        toast(`বিক্রয় সম্পন্ন! ${mockInv} — মোট ${formatCurrency(total)}, বাকি ${formatCurrency(due)} (browser mock)`, "success");
+        setCart([]); setDiscount(""); setPaid("");
+        return;
+      }
+      toast(msg, "error");
+    }
   };
 
   return (

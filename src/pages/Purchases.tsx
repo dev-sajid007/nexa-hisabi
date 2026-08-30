@@ -5,6 +5,7 @@ import { Input } from "../components/ui/input";
 import { formatCurrency } from "../lib/bn";
 import { invoke } from "../lib/tauri";
 import { useToast } from "../components/ui/toast";
+import { validateCart, validateQty, validatePrice } from "../lib/validation";
 import { Trash2, Plus } from "lucide-react";
 
 type Supplier = { id: string; name: string };
@@ -52,7 +53,10 @@ export function Purchases() {
     if (!prod) return toast("পণ্য নির্বাচন করুন", "error");
     const q = parseFloat(qty) || 0;
     const pr = parseFloat(price) || 0;
-    if (q <= 0 || pr < 0) return toast("পরিমাণ/মূল্য সঠিক দিন", "error");
+    const qtyErr = validateQty(q);
+    if (qtyErr) return toast(qtyErr, "error");
+    const priceErr = validatePrice(pr);
+    if (priceErr) return toast(priceErr, "error");
     setCart([...cart, { product_id: prod.id, name: prod.name, qty: q, price: pr }]);
     toast(`${prod.name} কার্টে যোগ ✓`, "success");
     setQty("1");
@@ -63,7 +67,10 @@ export function Purchases() {
   const due = Math.max(0, subtotal - paidAmt);
 
   const submit = async () => {
-    if (cart.length === 0) return toast("কার্ট খালি", "error");
+    const cartErr = validateCart(cart);
+    if (cartErr) return toast(cartErr, "error");
+    if (paidAmt < 0) return toast("পরিশোধ ০ এর কম হতে পারে না", "error");
+    if (paidAmt > subtotal) return toast("পরিশোধ মোটের চেয়ে বেশি হতে পারে না", "error");
     try {
       await invoke("create_purchase", {
         data: {
@@ -74,7 +81,15 @@ export function Purchases() {
       });
       toast(`ক্রয় সম্পন্ন! মোট ${formatCurrency(subtotal)}, বাকি ${formatCurrency(due)} — স্টক বৃদ্ধি ✓`, "success");
       setCart([]); setPaid(""); load();
-    } catch (e) { toast(String(e), "error"); }
+    } catch (e) {
+      const msg = String(e);
+      if (msg.includes("Tauri-not-available")) {
+        toast(`ক্রয় সম্পন্ন! মোট ${formatCurrency(subtotal)}, বাকি ${formatCurrency(due)} — স্টক বৃদ্ধি ✓ (browser mock)`, "success");
+        setCart([]); setPaid("");
+        return;
+      }
+      toast(msg, "error");
+    }
   };
 
   return (

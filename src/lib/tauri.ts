@@ -1,15 +1,22 @@
-import { invoke as tauriInvoke } from "@tauri-apps/api/core";
-
-// Fallback for browser (vite dev without Tauri) — returns mock or throws gracefully
-export async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
-  try {
-    return await tauriInvoke<T>(cmd, args);
-  } catch (e) {
-    // In browser without Tauri, tauriInvoke throws "not allowed" — rethrow for UI to handle
-    throw e;
-  }
-}
+import * as TauriCore from "@tauri-apps/api/core";
 
 export function isTauri(): boolean {
-  return (window as unknown as { __TAURI__?: unknown }).__TAURI__ !== undefined;
+  return typeof window !== "undefined" && (window as unknown as { __TAURI__?: unknown }).__TAURI__ !== undefined;
+}
+
+export async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
+  if (!isTauri()) {
+    throw new Error("Tauri-not-available");
+  }
+  try {
+    // TauriCore.invoke internally reads window.__TAURI__.invoke — browser এ TypeError হতে পারে
+    return await (TauriCore.invoke as (cmd: string, args?: Record<string, unknown>) => Promise<T>)(cmd, args);
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    // TypeError: Cannot read properties of undefined (reading 'invoke') → Tauri not running
+    if (msg.includes("invoke") || msg.includes("undefined") || msg.includes("Tauri-not-available")) {
+      throw new Error("Tauri-not-available");
+    }
+    throw e;
+  }
 }

@@ -5,6 +5,7 @@ import { Input } from "../components/ui/input";
 import { formatCurrency } from "../lib/bn";
 import { invoke } from "../lib/tauri";
 import { useToast } from "../components/ui/toast";
+import { validateName, validatePhone } from "../lib/validation";
 import { Plus, Trash2 } from "lucide-react";
 
 type Supplier = {
@@ -35,7 +36,10 @@ export function Suppliers() {
   useEffect(() => { load(); }, []);
 
   const create = async () => {
-    if (!form.name.trim()) return toast("নাম আবশ্যক", "error");
+    const nameErr = validateName(form.name);
+    if (nameErr) return toast(nameErr, "error");
+    const phoneErr = validatePhone(form.phone);
+    if (phoneErr) return toast(phoneErr, "error");
     try {
       await invoke("create_supplier", {
         data: {
@@ -47,7 +51,17 @@ export function Suppliers() {
       setShowForm(false);
       toast("সরবরাহকারী সংরক্ষিত ✓", "success");
       load();
-    } catch (e) { toast(String(e), "error"); }
+    } catch (e) {
+      const msg = String(e);
+      if (msg.includes("Tauri-not-available")) {
+        setList(prev => [{ id: Date.now().toString(), name: form.name, phone: form.phone || null, address: form.address || null, opening_due: parseFloat(form.opening_due) || 0 }, ...prev]);
+        setForm({ name: "", phone: "", address: "", opening_due: "" });
+        setShowForm(false);
+        toast("সরবরাহকারী সংরক্ষিত ✓ (browser mock)", "success");
+        return;
+      }
+      toast(msg, "error");
+    }
   };
 
   const del = async (id: string) => {

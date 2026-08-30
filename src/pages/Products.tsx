@@ -5,6 +5,7 @@ import { Input } from "../components/ui/input";
 import { formatCurrency, formatNumber } from "../lib/bn";
 import { invoke } from "../lib/tauri";
 import { useToast } from "../components/ui/toast";
+import { validateProductName, validatePrice } from "../lib/validation";
 import { Trash2 } from "lucide-react";
 
 type Category = { id: string; name: string };
@@ -38,13 +39,20 @@ export function Products() {
   useEffect(() => { load(); }, []);
 
   const create = async () => {
-    if (!form.name.trim()) return toast("পণ্যের নাম আবশ্যক", "error");
+    const nameErr = validateProductName(form.name);
+    if (nameErr) return toast(nameErr, "error");
+    const buy = parseFloat(form.buy_price) || 0;
+    const sell = parseFloat(form.sell_price) || 0;
+    const priceErr = validatePrice(buy) || validatePrice(sell);
+    if (priceErr) return toast(priceErr, "error");
+    if (buy > 0 && sell > 0 && sell < buy) return toast("বিক্রয় মূল্য ক্রয় মূল্যের চেয়ে কম!", "error");
+    if (!form.unit.trim()) return toast("একক আবশ্যক", "error");
     try {
       await invoke("create_product", {
         data: {
           name: form.name, sku: form.sku || null, category_id: form.category_id || null,
-          buy_price: parseFloat(form.buy_price) || 0,
-          sell_price: parseFloat(form.sell_price) || 0,
+          buy_price: buy,
+          sell_price: sell,
           stock: form.stock ? parseFloat(form.stock) : 0,
           min_stock: form.min_stock ? parseFloat(form.min_stock) : 5,
           unit: form.unit || "পিস",
@@ -54,7 +62,18 @@ export function Products() {
       setShowForm(false);
       toast("পণ্য সংরক্ষিত ✓", "success");
       load();
-    } catch (e) { toast(String(e), "error"); }
+    } catch (e) {
+      const msg = String(e);
+      if (msg.includes("Tauri-not-available")) {
+        setProducts(prev => [{ id: Date.now().toString(), name: form.name, sku: form.sku || null, category_id: form.category_id || null, buy_price: buy, sell_price: sell, stock: parseFloat(form.stock) || 0, min_stock: parseFloat(form.min_stock) || 5, unit: form.unit }, ...prev]);
+        setForm({ name: "", sku: "", category_id: "", buy_price: "", sell_price: "", stock: "", min_stock: "5", unit: "পিস" });
+        setShowForm(false);
+        toast("পণ্য সংরক্ষিত ✓ (browser mock)", "success");
+        return;
+      }
+      if (msg.includes("SKU")) toast("SKU আগে থেকেই আছে", "error");
+      else toast(msg, "error");
+    }
   };
 
   const del = async (id: string) => {
