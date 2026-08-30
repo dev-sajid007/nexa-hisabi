@@ -11,12 +11,17 @@ export function Settings() {
   const { toast } = useToast();
   const [biz, setBiz] = useState<Business>({ shop_name: "নেক্সা হিসাব", owner_name: "", phone: "", address: "" });
   const [saving, setSaving] = useState(false);
+  const [dbPath, setDbPath] = useState("");
 
   const load = async () => {
     try {
       const b = await invoke<Business>("get_business");
       setBiz(b as any);
     } catch { /* keep default */ }
+    try {
+      const p = await invoke<string>("get_db_path");
+      setDbPath(p);
+    } catch { setDbPath("Tauri build-এ দেখা যাবে"); }
   };
   useEffect(() => { load(); }, []);
 
@@ -28,6 +33,34 @@ export function Settings() {
       toast("দোকানের তথ্য সংরক্ষিত ✓", "success");
     } catch (e) { toast(String(e), "error"); }
     setSaving(false);
+  };
+
+  const doBackup = async () => {
+    try {
+      if (!(window as any).__TAURI__) {
+        toast(`DB path: ${dbPath}\nBrowser-এ backup Tauri build-এ কাজ করবে`, "info");
+        return;
+      }
+      const { save } = await import("@tauri-apps/plugin-dialog");
+      const dest = await save({ defaultPath: `nexa-hisab-backup-${new Date().toISOString().slice(0,10)}.db`, filters: [{ name: "SQLite", extensions: ["db"] }] });
+      if (!dest) return;
+      await invoke("backup_database", { dest });
+      toast(`Backup সম্পন্ন ✓ ${dest}`, "success");
+    } catch (e) { toast(String(e), "error"); }
+  };
+
+  const doRestore = async () => {
+    try {
+      if (!(window as any).__TAURI__) {
+        toast("Restore Tauri build-এ কাজ করবে", "info");
+        return;
+      }
+      const { open } = await import("@tauri-apps/plugin-dialog");
+      const src = await open({ filters: [{ name: "SQLite", extensions: ["db"] }] });
+      if (!src) return;
+      await invoke("restore_database", { src: src as string });
+      toast("Restore সম্পন্ন ✓ — অ্যাপ restart করুন", "success");
+    } catch (e) { toast(String(e), "error"); }
   };
 
   return (
@@ -52,39 +85,12 @@ export function Settings() {
         <CardHeader><CardTitle>💾 Backup & Restore</CardTitle></CardHeader>
         <CardContent className="space-y-3 text-sm">
           <p>App local SQLite ব্যবহার করে: <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">nexa-hisab.db</code></p>
-          <p className="text-xs text-gray-500" id="db-path">DB path: লোড হচ্ছে...</p>
+          <p className="text-xs text-gray-500 break-all">DB path: {dbPath || "লোড হচ্ছে..."}</p>
           <div className="flex gap-2 flex-wrap">
-            <Button variant="outline" onClick={async () => {
-              try {
-                const path = await invoke<string>("get_db_path");
-                (document.getElementById("db-path") as HTMLElement).textContent = `DB path: ${path}`;
-                // In Tauri, use dialog + fs to copy: for browser fallback show path
-                if ((window as any).__TAURI__) {
-                  const { save } = await import("@tauri-apps/plugin-dialog");
-                  const { copyFile } = await import("@tauri-apps/plugin-fs");
-                  const dest = await save({ defaultPath: `nexa-hisab-backup-${new Date().toISOString().slice(0,10)}.db`, filters: [{ name: "SQLite", extensions: ["db"] }] });
-                  if (dest) { await copyFile(path, dest); toast(`Backup সম্পন্ন ✓ ${dest}`, "success"); }
-                } else {
-                  toast(`Backup path: ${path}`, "info");
-                }
-              } catch (e) { toast(String(e), "error"); }
-            }}>Backup Database</Button>
-            <Button variant="outline" onClick={async () => {
-              try {
-                if ((window as any).__TAURI__) {
-                  const { open } = await import("@tauri-apps/plugin-dialog");
-                  const { copyFile } = await import("@tauri-apps/plugin-fs");
-                  const src = await open({ filters: [{ name: "SQLite", extensions: ["db"] }] });
-                  if (src) {
-                    const dest = await invoke<string>("get_db_path");
-                    await copyFile(src as string, dest);
-                    toast("Restore সম্পন্ন ✓ — অ্যাপ restart করুন", "success");
-                  }
-                } else toast("Restore: Tauri build-এ .db ফাইল নির্বাচন করুন", "info");
-              } catch (e) { toast(String(e), "error"); }
-            }}>Restore Backup</Button>
+            <Button variant="outline" onClick={doBackup}>Backup Database</Button>
+            <Button variant="outline" onClick={doRestore}>Restore Backup</Button>
           </div>
-          <p className="text-xs text-gray-500">Windows reinstall / computer change হলেও data হারাবে না। Backup এ WAL checkpoint করা হয়।</p>
+          <p className="text-xs text-gray-500">WAL checkpoint করে কপি করা হয় — Windows reinstall হলেও data হারাবে না।</p>
         </CardContent>
       </Card>
 

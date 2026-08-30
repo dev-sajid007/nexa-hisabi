@@ -61,6 +61,7 @@ pub fn run() {
             commands::settings::get_business,
             commands::settings::update_business,
             commands::backup::backup_database,
+            commands::backup::restore_database,
             commands::backup::get_db_path,
         ])
         .run(tauri::generate_context!())
