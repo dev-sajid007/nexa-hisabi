@@ -1,6 +1,8 @@
 mod commands;
 mod database;
 mod models;
+#[cfg(test)]
+mod tests;
 
 use sqlx::SqlitePool;
 use tauri::Manager;
