@@ -4,6 +4,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { formatCurrency } from "../lib/bn";
 import { invoke } from "../lib/tauri";
+import { useToast } from "../components/ui/toast";
 import { Plus, Trash2, Search } from "lucide-react";
 
 type Customer = {
@@ -17,6 +18,7 @@ type Customer = {
 };
 
 export function Customers() {
+  const { toast } = useToast();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
@@ -41,7 +43,8 @@ export function Customers() {
   useEffect(() => { load(); }, []);
 
   const create = async () => {
-    if (!form.name.trim()) return alert("নাম আবশ্যক");
+    if (!form.name.trim()) return toast("নাম আবশ্যক", "error");
+    if (form.phone && !/^01[0-9]{9}$/.test(form.phone.replace(/[^0-9]/g,""))) toast("মোবাইল ফরম্যাট: 01XXXXXXXXX", "info");
     try {
       await invoke("create_customer", {
         data: {
@@ -54,9 +57,10 @@ export function Customers() {
       });
       setForm({ name: "", phone: "", address: "", note: "", opening_due: "" });
       setShowForm(false);
+      toast("ক্রেতা সংরক্ষিত ✓", "success");
       load();
     } catch (e) {
-      alert(String(e));
+      toast(String(e), "error");
     }
   };
 
@@ -64,8 +68,9 @@ export function Customers() {
     if (!confirm("মুছে ফেলবেন?")) return;
     try {
       await invoke("delete_customer", { id });
+      toast("মুছে ফেলা হয়েছে", "success");
       load();
-    } catch (e) { alert(String(e)); }
+    } catch (e) { toast(String(e), "error"); }
   };
 
   const search = async () => {
