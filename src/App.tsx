@@ -6,7 +6,11 @@ import { Suppliers } from "./pages/Suppliers";
 import { Products } from "./pages/Products";
 import { Sales } from "./pages/Sales";
 import { Purchases } from "./pages/Purchases";
-import { Placeholder } from "./pages/Placeholder";
+import { DueBook } from "./pages/DueBook";
+import { Invoices } from "./pages/Invoices";
+import { Reports } from "./pages/Reports";
+import { Search } from "./pages/Search";
+import { Settings } from "./pages/Settings";
 import "./index.css";
 
 function App() {
@@ -20,11 +24,11 @@ function App() {
           <Route path="/products" element={<Products />} />
           <Route path="/sales" element={<Sales />} />
           <Route path="/purchases" element={<Purchases />} />
-          <Route path="/due-book" element={<Placeholder title="📒 বাকি খাতা" desc="পাওনা / দেনা — customer & supplier wise due" />} />
-          <Route path="/invoices" element={<Placeholder title="🧾 চালান / Invoice" desc="বাংলা invoice • PDF • Print" />} />
-          <Route path="/reports" element={<Placeholder title="📈 রিপোর্ট" desc="বিক্রয় / ক্রয় / লাভ / বাকি রিপোর্ট — custom date" />} />
-          <Route path="/search" element={<Placeholder title="🔍 Global Search" desc="Customer / Supplier / Product / Invoice / Transaction" />} />
-          <Route path="/settings" element={<Placeholder title="⚙️ Settings" desc="দোকানের তথ্য • Backup & Restore • Theme • বাংলা/English" />} />
+          <Route path="/due-book" element={<DueBook />} />
+          <Route path="/invoices" element={<Invoices />} />
+          <Route path="/reports" element={<Reports />} />
+          <Route path="/search" element={<Search />} />
+          <Route path="/settings" element={<Settings />} />
         </Route>
       </Routes>
     </BrowserRouter>

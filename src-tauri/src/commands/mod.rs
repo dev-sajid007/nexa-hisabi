@@ -1,6 +1,10 @@
 pub mod customers;
 pub mod dashboard;
+pub mod payments;
 pub mod products;
 pub mod purchases;
+pub mod reports;
 pub mod sales;
+pub mod search;
+pub mod settings;
 pub mod suppliers;
