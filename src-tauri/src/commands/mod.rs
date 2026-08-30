@@ -1,3 +1,4 @@
+pub mod backup;
 pub mod customers;
 pub mod dashboard;
 pub mod payments;

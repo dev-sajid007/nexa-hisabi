@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Button } from "../components/ui/button";
 import { formatCurrency } from "../lib/bn";
 import { invoke } from "../lib/tauri";
-import { Printer } from "lucide-react";
+import { Printer, Download } from "lucide-react";
 
 type Sale = { id: string; invoice_no: string; customer_id: string | null; subtotal: number; discount: number; total: number; paid: number; due: number; payment_method: string; created_at: string };
 type SaleItem = { id: string; sale_id: string; product_name: string; qty: number; price: number; total: number };
@@ -12,11 +12,13 @@ export function Invoices() {
   const [sales, setSales] = useState<Sale[]>([]);
   const [selected, setSelected] = useState<Sale | null>(null);
   const [items, setItems] = useState<SaleItem[]>([]);
+  const [shop, setShop] = useState<{ shop_name: string; owner_name: string | null; phone: string | null; address: string | null } | null>(null);
 
   const load = async () => {
     try {
       const s = await invoke<Sale[]>("get_sales");
       setSales(s);
+      try { const b = await invoke<any>("get_business"); setShop(b); } catch {}
     } catch {
       setSales([{ id: "1", invoice_no: "INV-20250829-0001", customer_id: null, subtotal: 840, discount: 0, total: 840, paid: 500, due: 340, payment_method: "নগদ", created_at: new Date().toISOString() }]);
     }
@@ -56,13 +58,14 @@ export function Invoices() {
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>চালান প্রিভিউ {selected && `— ${selected.invoice_no}`}</CardTitle>
-            {selected && <Button variant="outline" size="sm" onClick={() => window.print()}><Printer size={14} className="mr-2" /> Print / PDF</Button>}
+            {selected && <div className="flex gap-2"><Button variant="outline" size="sm" onClick={() => window.print()}><Printer size={14} className="mr-2" /> Print</Button><Button variant="outline" size="sm" onClick={() => window.print()}><Download size={14} className="mr-2" /> PDF</Button></div>}
           </CardHeader>
           <CardContent>
             {!selected ? <p className="text-sm text-gray-400 text-center py-12">বাম থেকে একটি চালান নির্বাচন করুন</p> :
               <div id="invoice" className="border rounded-lg p-6 bg-white dark:bg-gray-900 dark:border-gray-700 print:shadow-none">
                 <div className="text-center border-b pb-4 mb-4">
-                  <h2 className="text-xl font-bold">নেক্সা হিসাব</h2>
+                  <h2 className="text-xl font-bold">{shop?.shop_name ?? "নেক্সা হিসাব"}</h2>
+                  {shop && <p className="text-xs text-gray-500">{shop.owner_name ?? ""} {shop.phone ? `• ${shop.phone}` : ""} {shop.address ? `• ${shop.address}` : ""}</p>}
                   <p className="text-xs text-gray-500">বাংলা চালান • {selected.invoice_no} • {new Date(selected.created_at).toLocaleDateString()}</p>
                 </div>
                 <table className="w-full text-sm">

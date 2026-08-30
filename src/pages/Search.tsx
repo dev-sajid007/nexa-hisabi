@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
@@ -13,18 +14,25 @@ type Results = {
 };
 
 export function Search() {
-  const [q, setQ] = useState("");
+  const [searchParams] = useSearchParams();
+  const initialQ = searchParams.get("q") ?? "";
+  const [q, setQ] = useState(initialQ);
   const [res, setRes] = useState<Results | null>(null);
 
-  const doSearch = async () => {
-    if (!q.trim()) return;
+  const doSearch = async (query?: string) => {
+    const term = (query ?? q).trim();
+    if (!term) return;
     try {
-      const r = await invoke<Results>("global_search", { q });
+      const r = await invoke<Results>("global_search", { q: term });
       setRes(r);
     } catch {
       setRes({ customers: [{ id: "1", name: "রহিম", phone: "01712" }], suppliers: [], products: [{ id: "1", name: "চাল", sku: "CHAL-001" }], invoices: [{ id: "1", invoice_no: "INV-10023", total: 840 }] });
     }
   };
+
+  useEffect(() => {
+    if (initialQ) { setQ(initialQ); doSearch(initialQ); }
+  }, [initialQ]);
 
   return (
     <div className="space-y-4">
@@ -32,7 +40,7 @@ export function Search() {
       <Card>
         <CardContent className="pt-6 flex gap-2">
           <Input placeholder="🔍 রহিম, চাল, INV-10023, 017xxxxxxxx..." value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === 'Enter' && doSearch()} />
-          <Button onClick={doSearch}><SearchIcon size={16} className="mr-2" /> খুঁজুন</Button>
+          <Button onClick={() => doSearch()}><SearchIcon size={16} className="mr-2" /> খুঁজুন</Button>
         </CardContent>
       </Card>
 

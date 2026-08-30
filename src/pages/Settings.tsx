@@ -49,11 +49,39 @@ export function Settings() {
         <CardHeader><CardTitle>💾 Backup & Restore</CardTitle></CardHeader>
         <CardContent className="space-y-3 text-sm">
           <p>App local SQLite ব্যবহার করে: <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">nexa-hisab.db</code></p>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => alert("Backup: Tauri build-এ ফাইল পাথ থেকে nexa-hisab-backup-YYYY-MM-DD.db কপি করুন। (fs/dialog plugin ready)")}>Backup Database</Button>
-            <Button variant="outline" onClick={() => alert("Restore: .db ফাইল নির্বাচন করে app_data তে কপি করুন, তারপর restart।")}>Restore Backup</Button>
+          <p className="text-xs text-gray-500" id="db-path">DB path: লোড হচ্ছে...</p>
+          <div className="flex gap-2 flex-wrap">
+            <Button variant="outline" onClick={async () => {
+              try {
+                const path = await invoke<string>("get_db_path");
+                (document.getElementById("db-path") as HTMLElement).textContent = `DB path: ${path}`;
+                // In Tauri, use dialog + fs to copy: for browser fallback show path
+                if ((window as any).__TAURI__) {
+                  const { save } = await import("@tauri-apps/plugin-dialog");
+                  const { copyFile } = await import("@tauri-apps/plugin-fs");
+                  const dest = await save({ defaultPath: `nexa-hisab-backup-${new Date().toISOString().slice(0,10)}.db`, filters: [{ name: "SQLite", extensions: ["db"] }] });
+                  if (dest) { await copyFile(path, dest); alert(`Backup সম্পন্ন ✓\n${dest}`); }
+                } else {
+                  alert(`Backup path:\n${path}\n\nTauri build-এ Save dialog থেকে কপি হবে।`);
+                }
+              } catch (e) { alert(String(e)); }
+            }}>Backup Database</Button>
+            <Button variant="outline" onClick={async () => {
+              try {
+                if ((window as any).__TAURI__) {
+                  const { open } = await import("@tauri-apps/plugin-dialog");
+                  const { copyFile } = await import("@tauri-apps/plugin-fs");
+                  const src = await open({ filters: [{ name: "SQLite", extensions: ["db"] }] });
+                  if (src) {
+                    const dest = await invoke<string>("get_db_path");
+                    await copyFile(src as string, dest);
+                    alert("Restore সম্পন্ন ✓ — অ্যাপ restart করুন");
+                  }
+                } else alert("Restore: Tauri build-এ .db ফাইল নির্বাচন করে app_data তে কপি করুন, তারপর restart।");
+              } catch (e) { alert(String(e)); }
+            }}>Restore Backup</Button>
           </div>
-          <p className="text-xs text-gray-500">Windows reinstall / computer change হলেও data হারাবে না।</p>
+          <p className="text-xs text-gray-500">Windows reinstall / computer change হলেও data হারাবে না। Backup এ WAL checkpoint করা হয়।</p>
         </CardContent>
       </Card>
 
