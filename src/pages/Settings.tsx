@@ -3,10 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { invoke } from "../lib/tauri";
+import { useToast } from "../components/ui/toast";
 
 type Business = { shop_name: string; owner_name: string | null; phone: string | null; address: string | null };
 
 export function Settings() {
+  const { toast } = useToast();
   const [biz, setBiz] = useState<Business>({ shop_name: "নেক্সা হিসাব", owner_name: "", phone: "", address: "" });
   const [saving, setSaving] = useState(false);
 
@@ -19,11 +21,12 @@ export function Settings() {
   useEffect(() => { load(); }, []);
 
   const save = async () => {
+    if (!biz.shop_name.trim()) return toast("দোকানের নাম আবশ্যক", "error");
     setSaving(true);
     try {
       await invoke("update_business", { data: { shop_name: biz.shop_name, owner_name: biz.owner_name || null, phone: biz.phone || null, address: biz.address || null } });
-      alert("দোকানের তথ্য সংরক্ষিত ✓ (চালানে ব্যবহার হবে)");
-    } catch (e) { alert(String(e)); }
+      toast("দোকানের তথ্য সংরক্ষিত ✓", "success");
+    } catch (e) { toast(String(e), "error"); }
     setSaving(false);
   };
 
@@ -60,11 +63,11 @@ export function Settings() {
                   const { save } = await import("@tauri-apps/plugin-dialog");
                   const { copyFile } = await import("@tauri-apps/plugin-fs");
                   const dest = await save({ defaultPath: `nexa-hisab-backup-${new Date().toISOString().slice(0,10)}.db`, filters: [{ name: "SQLite", extensions: ["db"] }] });
-                  if (dest) { await copyFile(path, dest); alert(`Backup সম্পন্ন ✓\n${dest}`); }
+                  if (dest) { await copyFile(path, dest); toast(`Backup সম্পন্ন ✓ ${dest}`, "success"); }
                 } else {
-                  alert(`Backup path:\n${path}\n\nTauri build-এ Save dialog থেকে কপি হবে।`);
+                  toast(`Backup path: ${path}`, "info");
                 }
-              } catch (e) { alert(String(e)); }
+              } catch (e) { toast(String(e), "error"); }
             }}>Backup Database</Button>
             <Button variant="outline" onClick={async () => {
               try {
@@ -75,10 +78,10 @@ export function Settings() {
                   if (src) {
                     const dest = await invoke<string>("get_db_path");
                     await copyFile(src as string, dest);
-                    alert("Restore সম্পন্ন ✓ — অ্যাপ restart করুন");
+                    toast("Restore সম্পন্ন ✓ — অ্যাপ restart করুন", "success");
                   }
-                } else alert("Restore: Tauri build-এ .db ফাইল নির্বাচন করে app_data তে কপি করুন, তারপর restart।");
-              } catch (e) { alert(String(e)); }
+                } else toast("Restore: Tauri build-এ .db ফাইল নির্বাচন করুন", "info");
+              } catch (e) { toast(String(e), "error"); }
             }}>Restore Backup</Button>
           </div>
           <p className="text-xs text-gray-500">Windows reinstall / computer change হলেও data হারাবে না। Backup এ WAL checkpoint করা হয়।</p>

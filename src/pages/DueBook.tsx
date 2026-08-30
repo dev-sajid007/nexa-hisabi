@@ -4,11 +4,13 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { formatCurrency } from "../lib/bn";
 import { invoke } from "../lib/tauri";
+import { useToast } from "../components/ui/toast";
 
 type DueEntry = { id: string; name: string; phone: string | null; due: number };
 type DueBook = { receivable: DueEntry[]; payable: DueEntry[]; total_receivable: number; total_payable: number };
 
 export function DueBook() {
+  const { toast } = useToast();
   const [data, setData] = useState<DueBook | null>(null);
   const [pay, setPay] = useState({ id: "", type: "customer" as "customer"|"supplier", amount: "" });
 
@@ -27,7 +29,8 @@ export function DueBook() {
   useEffect(() => { load(); }, []);
 
   const doPay = async () => {
-    if (!pay.id || !pay.amount) return alert("ID ও টাকা দিন");
+    if (!pay.id || !pay.amount) return toast("ID ও টাকা দিন", "error");
+    if (parseFloat(pay.amount) <= 0) return toast("টাকার পরিমাণ ০ এর বেশি হতে হবে", "error");
     try {
       await invoke("create_payment", {
         data: {
@@ -37,10 +40,10 @@ export function DueBook() {
           method: "নগদ"
         }
       });
-      alert("লেনদেন সফল ✓");
+      toast("লেনদেন সফল ✓", "success");
       setPay({ id: "", type: "customer", amount: "" });
       load();
-    } catch (e) { alert(String(e)); }
+    } catch (e) { toast(String(e), "error"); }
   };
 
   if (!data) return <p>লোড হচ্ছে...</p>;
