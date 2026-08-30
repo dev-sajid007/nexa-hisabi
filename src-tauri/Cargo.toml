@@ -1,7 +1,7 @@
 [package]
 name = "nexa-hisabi"
-version = "0.1.0"
-description = "A Tauri App"
+version = "1.0.0"
+description = "নেক্সা হিসাব — V1 ব্যবসা হিসাব ডেস্কটপ অ্যাপ"
 authors = ["you"]
 edition = "2021"
 
